@@ -1,0 +1,27 @@
+---
+- name: Subida de imágenes a ACR
+  hosts: localhost
+  vars_files:
+    - group_vars/secrets.yml
+  roles:
+    - role: common
+    - role: acr
+  tags: acr
+
+- name: Desplegar servidor estático (Homer)
+  hosts: vm
+  become: true
+  vars_files:
+    - group_vars/secrets.yml
+  roles:
+    - role: vm
+  tags: vm
+
+- name: Despliegue de app con persistencia en AKS
+  hosts: localhost
+  vars_files:
+    - group_vars/secrets.yml
+  roles:
+    - role: common
+    - role: aks
+  tags: aks

@@ -1,0 +1,45 @@
+---
+- name: Login en Azure Container Registry con Podman
+  containers.podman.podman_login:
+    registry: "{{ acr_login_server }}"
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
+
+- name: Build imagen del servidor web
+  containers.podman.podman_image:
+    name: "{{ acr_login_server }}/webserver"
+    tag: "casopractico2"
+    path: "{{ role_path }}/files/webserver"
+    push: true
+
+- name: Borrar imagen persistente local si existe
+  shell: >
+    podman images --format '{{ '{{.Repository}}:{{.Tag}}' }}' |
+    grep "{{ acr_login_server }}/persistente" |
+    xargs -r podman rmi
+  ignore_errors: true
+
+
+- name: Generar tag único basado en timestamp
+  set_fact:
+    acr_dynamic_tag: "casopractico2-{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+
+- name: Guardar tag en archivo temporal para otros roles (opcional)
+  copy:
+    content: "{{ acr_dynamic_tag }}"
+    dest: "/tmp/acr_tag.txt"
+
+- name: Construir imagen de la app persistente y subirla al ACR (sin caché)
+  containers.podman.podman_image:
+    name: "{{ acr_login_server }}/persistente"
+    tag: "{{ acr_dynamic_tag }}"
+    path: "{{ role_path }}/files/persistente"
+    push: true
+    force: true
+    build:
+      format: docker
+      extra_args: "--no-cache"
+
+- name: Registrar tag dinámico para que AKS lo use
+  set_fact:
+    acr_tag: "{{ acr_dynamic_tag }}"

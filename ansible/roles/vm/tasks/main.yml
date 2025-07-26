@@ -1,0 +1,51 @@
+---
+- name: Actualizar caché de paquetes APT
+  apt:
+    update_cache: yes
+  become: true
+
+- name: Instalar Podman
+  apt:
+    name: podman
+    state: present
+  become: true
+
+- name: Verificar que Podman está disponible
+  command: podman --version
+  register: podman_version
+  changed_when: false
+
+- name: Mostrar versión de Podman instalada
+  debug:
+    msg: "Versión de Podman instalada: {{ podman_version.stdout }}"
+
+- name: Login en el ACR desde la VM con Podman
+  containers.podman.podman_login:
+    registry: "{{ acr_login_server }}"
+    username: "{{ acr_username }}"
+    password: "{{ acr_password }}"
+  register: acr_login_result
+
+- name: Mostrar resultado del login
+  debug:
+    var: acr_login_result
+
+- name: Pull de la imagen webserver:casopractico2
+  containers.podman.podman_image:
+    name: "{{ acr_login_server }}/webserver"
+    tag: "casopractico2"
+    pull: true
+  register: pull_result
+
+- name: Mostrar resultado del pull
+  debug:
+    var: pull_result
+
+- name: Ejecutar contenedor Homer
+  containers.podman.podman_container:
+    name: homer-web
+    image: "{{ acr_login_server }}/webserver:casopractico2"
+    state: started
+    restart_policy: always
+    publish:
+      - "80:80"

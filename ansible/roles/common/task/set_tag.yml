@@ -1,0 +1,4 @@
+---
+- name: Generar tag único basado en timestamp
+  set_fact:
+    acr_tag: "casopractico2-{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"

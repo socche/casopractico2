@@ -1,0 +1,69 @@
+- name: Crear namespace para la app
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Namespace
+    name: homer-wp
+    state: present
+
+- name: Crear Secret para ACR
+  import_tasks: acr-secret.yml
+
+# PostgreSQL
+- name: Crear PVC para PostgreSQL
+  kubernetes.core.k8s:
+    namespace: homer-wp
+    definition: "{{ lookup('file', 'roles/aks/files/pvc-postgres.yml') | from_yaml }}"
+
+- name: Desplegar PostgreSQL
+  kubernetes.core.k8s:
+    namespace: homer-wp
+    definition: "{{ lookup('template', 'roles/aks/templates/deployment-postgres.yml.j2') | from_yaml }}"
+
+- name: Crear servicio PostgreSQL
+  kubernetes.core.k8s:
+    namespace: homer-wp
+    definition: "{{ lookup('file', 'roles/aks/files/service-postgres.yml') | from_yaml }}"
+
+# App Flask
+- name: Crear PVC para la app Flask
+  kubernetes.core.k8s:
+    namespace: homer-wp
+    definition: "{{ lookup('file', 'roles/aks/files/pvc-flaskapp.yml') | from_yaml }}"
+
+- name: Desplegar app Flask personalizada
+  kubernetes.core.k8s:
+    namespace: homer-wp
+    definition: "{{ lookup('template', 'roles/aks/templates/deployment-app.yml.j2') | from_yaml }}"
+
+- name: Crear servicio LoadBalancer para app Flask
+  kubernetes.core.k8s:
+    namespace: homer-wp
+    definition: "{{ lookup('file', 'roles/aks/files/service-app.yml') | from_yaml }}"
+
+- name: Esperar a que el pod de la app Flask esté listo
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: homer-wp
+    label_selectors:
+      - app=flaskapp
+  register: flask_pods
+  until: flask_pods.resources[0].status.containerStatuses[0].ready is defined and flask_pods.resources[0].status.containerStatuses[0].ready
+  retries: 30
+  delay: 10
+
+- name: Obtener EXTERNAL-IP del servicio de la app Flask
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Service
+    namespace: homer-wp
+    name: flaskapp-service
+  register: flask_service_info
+
+- name: Guardar IP externa de la app Flask
+  set_fact:
+    flaskapp_external_ip: "{{ flask_service_info.resources[0].status.loadBalancer.ingress[0].ip }}"
+
+- name: Mostrar IP externa de la app Flask
+  debug:
+    msg: "Tu app está disponible en: http://{{ flaskapp_external_ip }}:5000"
