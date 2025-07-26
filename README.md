@@ -24,6 +24,42 @@ Este proyecto consiste en la creación y configuración automática de una infra
         └── aks
 
 ```
+## Archivos de ejemplo para configuración
+
+Este repositorio incluye archivos `.save` con las variables necesarias para ejecutar Terraform y Ansible, pero **sin valores sensibles**. Puedes usarlos como plantilla para crear los reales.
+
+### Terraform
+
+- `terraform.tfvars.save` → Plantilla vacía:
+```hcl
+subscription_id = ""
+tenant_id       = ""
+client_id       = ""
+client_secret   = ""
+```
+
+### Ansible
+
+- `group_vars/secrets.yml.save` → Variables sensibles:
+```yaml
+acr_username: "acrjcollado"
+acr_password: ""
+acr_login_server: acrjcollado.azurecr.io
+
+kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
+
+postgres_db: ""
+postgres_user: ""
+postgres_password: ""
+postgres_host: ""
+
+db_name: encuesta
+db_user: encuesta_user
+db_password: ""
+```
+
+> Asegúrate de **copiar estos archivos** (sin la extensión `.save`) y rellenarlos correctamente antes de ejecutar los despliegues.
+
 ## Tecnologías utilizadas
 
 - Azure
